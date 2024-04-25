@@ -1,21 +1,52 @@
-#import numpy as np
-#import matplotlib.pyplot as plt
-#import tqdm as tqdm
+import numpy as np
+import matplotlib.pyplot as plt
+import tqdm as tqdm
 import argparse
 import json
 
-def equation1(vm, vr, tm, iSyn, cm, t, ts, tr, delta):
-    eq1 = (-1*(vm - vr)/tm + (iSyn/cm)) * delta(t-ts-tr)
+'''
+variables:
+    vm = membrane potential
+    vr = resting potential of neuron (constant)
+    tm = decay time (constant)
+    iSyn = total synaptic input current (modeled using alpha synapse model)
+    cm = membrane capacitance (constant)
+    delta = time step
+
+'''
+def LIFModel(vm, vr, tm, iSyn, cm, delta):
+    eq1 = (-1*(vm - vr)/tm + (iSyn/cm)) * delta
     return eq1
 
-def equation2(deltaX):
+'''
+variables:
+    t = time
+    ts = time of the last spike
+    tr = refractory period
+    deltaX = difference between t, ts, and tr
+'''
+def heavisideEQ(t, ts, tr):
+    deltaX = t - ts - tr
     if(deltaX<=0):
         return 0
     else:
         return 1
 
+'''
+variables:
+    w = weight of the synapse (constant)
+    g = conductance of the synapse (constant)
+    vRev = reversal potential of the synapse (constant)
+    vm = membrane potential
+    t = current time
+    t0 = time of the last spike started
+    tSyn = synaptic time constant
+    exp = exponential function (not sure what exp means. Exponent?? Exponential function??)
+'''
 def alphaSynapseModel(w, g, vRev, vm, t, t0, tSyn, exp):
     equation = w*g*(vRev - vm)*((t-t0)/tSyn)*exp(-(t-t0)/tSyn)
+    return equation
+
 if __name__ == "__main__":
     print("Hello World")
 
