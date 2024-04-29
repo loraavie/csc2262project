@@ -4,14 +4,14 @@ import tqdm as tqdm
 import argparse
 import json
 
-def LIF_model_eulers_method(prev, vm, vr, tm, isyn, cm, t, ts, tr, dt):
+
+def LIF_model_eulers_method(vm, vr, tm, isyn, cm, t, ts, tr, dt):
     """
     Uses Euler's method
-    :param prev: previous membrane voltage
     :param vm: membrane voltage
     :param vr: (constant) resting potential of neuron; voltage of neuron at "rest" (volts)
     :param taum: (constant) decay time of neuron; how fast neuron leaks charge (seconds)
-    :param isyn: either the constant or the calculated?
+    :param isyn: either the constant or the calculated? (amps)
     :param cm: (constant) membrane capacitance; how much charge neuron can hold (farads)
     :param t: time (seconds)
     :param ts: time of last spike (seconds)
@@ -19,8 +19,9 @@ def LIF_model_eulers_method(prev, vm, vr, tm, isyn, cm, t, ts, tr, dt):
     :param dt: delta t; step size
     :return: membrane voltage at next step
     """
+    oldVal = vm
     heaviside_value = heaviside_step_function(t, ts, tr)
-    return prev + dt * ((-((vm-vr)/tm) + isyn/cm)*heaviside_value)
+    return vm + dt * ((-((vm-vr)/tm) + isyn/cm)*heaviside_value)
 
 
 def heaviside_step_function(t, ts, tr):
@@ -34,8 +35,6 @@ def heaviside_step_function(t, ts, tr):
     if (t - ts - tr) <= 0:
         return 0
     else:
-        #set ts to last spike time
-        tSpike = t
         return 1
 
 
@@ -53,6 +52,12 @@ def alpha_synapse_model(w, g, vrev, vm, t, t0, tausyn):
     """
     return w*g*(vrev-vm)*((t-t0)/tausyn)*np.exp(-(t-t0)/tausyn)
 
+
+# Experiment 5 Taylor Series approximation of e^x centered at 0
+def bonus(x):
+    return 1 + x + (x**2)/2 + (x**3)/6 + (x**4)/24 + (x**5)/120 + (x**6)/720 + (x**7)/5040 + (x**8)/40320 + (x**9)/362880 + (x**10)/3628000
+
+
 if __name__ == "__main__":
     print("Hello World")
 
@@ -60,25 +65,11 @@ if __name__ == "__main__":
     parser.add_argument('m', type=str, help="The value of m; can either be spike or current")
     parser.add_argument('s', type=float, help="The value of s; amount of time to run the simulation in milliseconds")
     parser.add_argument('--spike_rate', type=int, help="input spike rate in Hz")
-    parser.add_argument('--current',default = 1, type=float, help="input current in nanoamps")
+    parser.add_argument('--current', default = .0000000001, type=float, help="input current in nanoamps")
     # Parse the command line arguments
     args = parser.parse_args()
-    dt = 0.001
+
     mode = args.m
-
-    #initializing vals to be read from the json file
-    v_r = 0
-    v_th = 0
-    v_spike = 0
-    v_rev = 0
-    tao_m = 0
-    tao_syn = 0
-    c_m = 0
-    g_bar = 0
-    t_r = 0
-    w = 0
-
-
     if mode != "spike" and mode != "current":
         print("Invalid mode")
         exit(1)
@@ -109,33 +100,61 @@ if __name__ == "__main__":
 
     # Simulation time
     sim_time = args.s/1000
+    #t_r = t_r/1000
 
-    # These will store the time and membrane voltages?
-    time = [0]
-    membrane_voltage = [v_r]
-    # not sure if correct
-    vm = 0
-    tSpike = 0
+    # These will store the time and membrane voltage
+    time = 0
+    time_array = [time]
+    membrane_voltage = v_r
+    membrane_voltage_array = [membrane_voltage]
+
+    ts = 0
+
     # Spike mode
     if mode == "spike":
+        print("SPIKE")
         spike_rate = args.spike_rate
-        while time[-1] < sim_time:
-            time.append(time[-1] + dt)
-            print("here spike")
-            i_syn = alpha_synapse_model(w, g_bar, v_rev, membrane_voltage[-1], time[-1], 0, tao_syn)
-            membrane_voltage.append(LIF_model_eulers_method(membrane_voltage[-1], vm, v_r, tao_m, i_syn, c_m, time[-1], tSpike, t_r, dt))
+        while time < sim_time:
+            time += dt
+            #problem here
+            i_syn = alpha_synapse_model(0.01, g_bar, v_rev, membrane_voltage, time, ts, tao_syn)
+            print("val1", dt*((-((membrane_voltage-v_r)/tao_m)) ))
+            print("val2", i_syn/c_m)
+            membrane_voltage += dt*((-((membrane_voltage-v_r)/tao_m) + i_syn/c_m)*heaviside_step_function(time, ts, t_r))
+            print("Step Function", heaviside_step_function(time, ts, t_r))
+            print("Membrane Voltage", membrane_voltage)
+            if membrane_voltage > v_thr:
+                print("Membrane Voltage 2", membrane_voltage)
+                #membrane_voltage_array.append(membrane_voltage)
+                membrane_voltage = v_r
+                ts = time
+            membrane_voltage_array.append(membrane_voltage)
+            print("Time", time)
+            time_array.append(time)
+
 
     # Current mode
     if mode == "current":
+        print("CURRENT")
         current = args.current
-        while time[-1] < sim_time:
-            time.append(time[-1] + dt)
+        while time <= sim_time:
+            time += dt
             i_syn = current
-            print("here")
-            membrane_voltage.append(LIF_model_eulers_method(membrane_voltage[-1], vm, v_r, tao_m, i_syn, c_m, time[-1], tSpike, t_r, dt))
+            membrane_voltage += (dt*((-((membrane_voltage-v_r)/tao_m) + i_syn/c_m)*heaviside_step_function(time, ts, t_r)))
+            print("Membrane Voltage", membrane_voltage)
+            if membrane_voltage > v_thr:
+                membrane_voltage = v_r
+                print("Membrane Voltage 2", membrane_voltage)
+                ts = time
+            print("Time", time)
+            print("val1", dt * ((-((membrane_voltage - v_r) / tao_m))))
+            print("val2", i_syn / c_m)
+            time_array.append(time)
+            membrane_voltage_array.append(membrane_voltage)
 
 # Plot it
-plt.plot(time, membrane_voltage, color='r')
+# print("Membrane Voltage Array", membrane_voltage_array)
+plt.plot(time_array, membrane_voltage_array, color='r')
 plt.title("Group 8 Membrane Potential Track", size=16)
 plt.xlabel("Time (msec)", size=16)
 plt.ylabel("V_m (volt)", size=16)
