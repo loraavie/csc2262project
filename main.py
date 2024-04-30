@@ -19,7 +19,6 @@ def LIF_model_eulers_method(vm, vr, tm, isyn, cm, t, ts, tr, dt):
     :param dt: delta t; step size
     :return: membrane voltage at next step
     """
-    oldVal = vm
     heaviside_value = heaviside_step_function(t, ts, tr)
     return vm + dt * ((-((vm-vr)/tm) + isyn/cm)*heaviside_value)
 
@@ -50,6 +49,10 @@ def alpha_synapse_model(w, g, vrev, vm, t, t0, tausyn):
     :param tausyn: (constant) decay time of alpha synapse (seconds)
     :return: isyn
     """
+    print("t",t)
+    print("t0", t0)
+    print(-(t-t0)/tausyn)
+    print("val3", np.exp(-(t-t0)/tausyn))
     return w*g*(vrev-vm)*((t-t0)/tausyn)*np.exp(-(t-t0)/tausyn)
 
 
@@ -65,7 +68,7 @@ if __name__ == "__main__":
     parser.add_argument('m', type=str, help="The value of m; can either be spike or current")
     parser.add_argument('s', type=float, help="The value of s; amount of time to run the simulation in milliseconds")
     parser.add_argument('--spike_rate', type=int, help="input spike rate in Hz")
-    parser.add_argument('--current', default = .0000000001, type=float, help="input current in nanoamps")
+    parser.add_argument('--current', default = 1, type=float, help="input current in nanoamps")
     # Parse the command line arguments
     args = parser.parse_args()
 
@@ -114,10 +117,13 @@ if __name__ == "__main__":
     if mode == "spike":
         print("SPIKE")
         spike_rate = args.spike_rate
+        spike_times = np.arange(0, sim_time, sim_time/spike_rate)
+
         while time < sim_time:
             time += dt
             #problem here
-            i_syn = alpha_synapse_model(0.01, g_bar, v_rev, membrane_voltage, time, ts, tao_syn)
+            i_syn = alpha_synapse_model(1, g_bar, v_rev, membrane_voltage, time, ts, tao_syn)
+            print("Isyn =", i_syn)
             print("val1", dt*((-((membrane_voltage-v_r)/tao_m)) ))
             print("val2", i_syn/c_m)
             membrane_voltage += dt*((-((membrane_voltage-v_r)/tao_m) + i_syn/c_m)*heaviside_step_function(time, ts, t_r))
@@ -135,8 +141,8 @@ if __name__ == "__main__":
 
     # Current mode
     if mode == "current":
-        print("CURRENT")
-        current = args.current
+        #membrane_voltage_array[0]=v_spike
+        current = args.current/1000000000
         while time <= sim_time:
             time += dt
             i_syn = current
@@ -144,13 +150,16 @@ if __name__ == "__main__":
             print("Membrane Voltage", membrane_voltage)
             if membrane_voltage > v_thr:
                 membrane_voltage = v_r
-                print("Membrane Voltage 2", membrane_voltage)
+                membrane_voltage_array.append(v_spike)
+                #print("Membrane Voltage 2", membrane_voltage)
                 ts = time
+            else:
+                membrane_voltage_array.append(membrane_voltage)
             print("Time", time)
             print("val1", dt * ((-((membrane_voltage - v_r) / tao_m))))
             print("val2", i_syn / c_m)
             time_array.append(time)
-            membrane_voltage_array.append(membrane_voltage)
+
 
 # Plot it
 # print("Membrane Voltage Array", membrane_voltage_array)
