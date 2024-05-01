@@ -1,4 +1,4 @@
-#Group 8: Gayoon Nam, Kristen Averett, Cassidy McDonald, Lora Elliott, Lynn Nguyen
+# Group 8: Gayoon Nam, Kristen Averett, Cassidy McDonald, Lora Elliott, Lynn Nguyen
 
 # Many print lines which were used for debugging are commented out.
 
