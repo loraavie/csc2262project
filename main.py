@@ -1,10 +1,14 @@
+#Group 8: Gayoon Nam, Kristen Averett, Cassidy McDonald, Lora Elliott, Lynn Nguyen 
+
+#Many print lines which were used for debugging are commented out. 
+
 import numpy as np
 import matplotlib.pyplot as plt
 import tqdm as tqdm
 import argparse
 import json
 
-
+#Not Used
 def LIF_model_eulers_method(vm, vr, tm, isyn, cm, t, ts, tr, dt):
     """
     Uses Euler's method
@@ -51,9 +55,9 @@ def alpha_synapse_model(w, g, vrev, vm, t, t0, tausyn):
     """
     print("t",t)
     print("t0", t0)
-    print((t-t0)/tausyn)
+    print(-(t-t0)/tausyn)
     print("val3", np.exp(-(t-t0)/tausyn))
-    return w*g*(vrev-vm)*((t-t0)/tausyn)*np.exp(-(t-t0)/tausyn)
+    return (w*g*(vrev-vm)*((t-t0)/tausyn)*np.exp(-(t-t0)/tausyn))
 
 
 # Experiment 5 Taylor Series approximation of e^x centered at 0
@@ -62,12 +66,11 @@ def bonus(x):
 
 
 if __name__ == "__main__":
-    print("Hello World")
 
     parser = argparse.ArgumentParser("Program to model the current of a neuron")
     parser.add_argument('m', type=str, help="The value of m; can either be spike or current")
     parser.add_argument('s', type=float, help="The value of s; amount of time to run the simulation in milliseconds")
-    parser.add_argument('--spike_rate', default=100, type=int, help="input spike rate in Hz")
+    parser.add_argument('--spike_rate', default=50, type=int, help="input spike rate in Hz")
     parser.add_argument('--current', default = 1, type=float, help="input current in nanoamps")
     # Parse the command line arguments
     args = parser.parse_args()
@@ -103,7 +106,7 @@ if __name__ == "__main__":
 
     # Simulation time
     sim_time = args.s/1000
-    #t_r = t_r/1000
+
 
     # These will store the time and membrane voltage
     time = 0
@@ -115,47 +118,51 @@ if __name__ == "__main__":
 
     # Spike mode
     if mode == "spike":
-        print("SPIKE")
+       # print("SPIKE")
         firstSpike = True
         spike_rate = args.spike_rate
         spike_times = np.arange(0, sim_time, sim_time/spike_rate)
-        time_between_spikes = (spike_times[1]-spike_times[0]) * 10
-        print(spike_times)
+        time_between_spikes = (spike_times[1]-spike_times[0])*10
+       # print(spike_times)
 
         while time < sim_time:
 
 
             time += dt
-            t0_index = np.where((time - spike_times) >= 0)[0][-1]
-            t0 = spike_times[t0_index]
-            #problem here
+            t0 = 0
+            #problem here (SOLVED)
             i_syn = alpha_synapse_model(1, g_bar, v_rev, membrane_voltage, time, ts, tao_syn)
-            print("Isyn =", i_syn)
-            print("val1", dt*((-((membrane_voltage-v_r)/tao_m)) ))
-            print("val2", i_syn/c_m)
+            #print("Isyn =", i_syn)
+            #print("val1", dt*((-((membrane_voltage-v_r)/tao_m)) ))
+            #print("val2", i_syn/c_m)
             membrane_voltage += dt*((-((membrane_voltage-v_r)/tao_m) + i_syn/c_m)*heaviside_step_function(time, ts, t_r))
-            print("Step Function", heaviside_step_function(time, ts, t_r))
-            print("Membrane Voltage", membrane_voltage)
+            #print("Step Function", heaviside_step_function(time, ts, t_r))
+            #print("Membrane Voltage", membrane_voltage)
             if time-ts-t_r > time_between_spikes:
                 ts = time
                 membrane_voltage = v_spike
-            membrane_voltage_array.append(membrane_voltage)
+
             if membrane_voltage > v_thr:
-                print("Membrane Voltage 2", membrane_voltage)
-                #membrane_voltage_array.append(membrane_voltage)
+                #print("Membrane Voltage 2", membrane_voltage)
+                membrane_voltage = v_spike
+                membrane_voltage_array.append(membrane_voltage)
+                ts = time + dt
+
                 membrane_voltage = v_r
-                ts = time
 
                 print("Current Time: ", time, "Start Time of Last Input Spike: ", t0)
+            else:
+                membrane_voltage_array.append(membrane_voltage)
 
             print("Time", time)
-            time_array.append(time)
+            print("TS", ts)
+            time_array.append(time*1000)
 
 
     # Current mode
     if mode == "current":
         #membrane_voltage_array[0]=v_spike
-        current = args.current/10000000000
+        current = args.current/1000000000
         while time <= sim_time:
             time += dt
             i_syn = current
@@ -168,10 +175,10 @@ if __name__ == "__main__":
                 ts = time
             else:
                 membrane_voltage_array.append(membrane_voltage)
-            print("Time", time)
-            print("val1", dt * ((-((membrane_voltage - v_r) / tao_m))))
-            print("val2", i_syn / c_m)
-            time_array.append(time)
+            #print("Time", time)
+            #print("val1", dt * ((-((membrane_voltage - v_r) / tao_m))))
+            #print("val2", i_syn / c_m)
+            time_array.append(time*1000)
 
 #print(spike_times)
 # Plot it
